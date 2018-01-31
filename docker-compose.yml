@@ -1,0 +1,68 @@
+version: '2.0'
+services:
+
+  nginx: # nginx container
+    image: nginx:latest
+    ports:
+      - "80:80"
+    links:
+      - php-fpm
+    volumes:
+      - <local_relative_project_path>:<container_absolute_project_path> # - .:/var/www/my-site.loc
+      - <local_relative_public_folder_path>:<container_absolute_public_folder_path> #- ./public:/var/www/my-site.loc/public
+      - <nginx_conf_folder_relative_path>:<container_nginx_conf_folder_absolute_path> # - ./docker/nginx:/etc/nginx/conf.d
+      - <local_nginx_logs_relative_folder_path>:<container_nginx_absolute_logs_folder_path> #- ./var/log/nginx:/var/log/nginx
+    networks:
+      mynetwork: # set network name
+        ipv4_address: 10.0.75.2 # set container ip
+
+  mysql: # mysql container
+    image: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: <mysql_user_name> # Change username. example : myuser
+      MYSQL_PASS: <mysql_user_password> # Change password. example : mypass
+    volumes:
+      - <local_mysql_data_relatie_folder_path>:<container_mysql_data_absolute_folder_path> # - ./var/mysql:/var/lib/mysql
+    networks:
+      mynetwork: # set network name
+        ipv4_address: 10.0.75.4 # set container ip
+
+  redis: # redis container
+    image: redis:latest
+    networks:
+      mynetwork: # set network name
+        ipv4_address: 10.0.75.5 # set container ip
+
+  adminer: # adminer container. Can use this container by url http://localhost:8080
+      image: adminer
+      restart: always
+      ports:
+        - 8080:8080
+      networks:
+        mynetwork: # set network name
+          ipv4_address: 10.0.75.200 # set container ip
+
+  php-fpm: # php-fpm container
+      build: ./docker/php-fpm # set folder with Dockerfile for this container
+      environment:
+        # set xdebug settings
+        PHP_IDE_CONFIG: "serverName=project-server"
+        PHP_XDEBUG_ENABLED: 1
+        XDEBUG_CONFIG: remote_host=10.0.75.1
+      volumes:
+          - <local_project_folder_relative_path>:<container_project_folder_absolute_path> # - .:/var/www/my-site.loc
+      links:
+          - mysql
+          - redis
+      networks:
+        mynetwork: # set network name
+          ipv4_address: 10.0.75.3 # set container ip
+
+networks: # configure network for containers
+  mynetwork: # set network name
+    driver: bridge
+    ipam:
+      config:
+      - subnet: 10.0.75.0/24
